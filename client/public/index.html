@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Store - E-commerce with API Integration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .product-card {
+            transition: all 0.3s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .cart-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md py-4 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center px-4">
+            <a href="#" class="text-2xl font-bold text-blue-600">Local Store</a>
+            
+            <div class="hidden md:flex space-x-6">
+                <a href="#" class="text-gray-600 hover:text-blue-600 font-medium">Home</a>
+                <a href="#" class="text-gray-600 hover:text-blue-600 font-medium">Products</a>
+                <a href="#" class="text-gray-600 hover:text-blue-600 font-medium">Cart</a>
+                <a href="#" class="text-gray-600 hover:text-blue-600 font-medium">Login</a>
+            </div>
+
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <a href="#" class="text-gray-600 hover:text-blue-600">
+                        <i class="fas fa-shopping-cart text-xl"></i>
+                        <span class="cart-badge">0</span>
+                    </a>
+                </div>
+                <button class="md:hidden text-gray-600">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-blue-500 to-purple-600 text-white py-16">
+        <div class="container mx-auto text-center px-4">
+            <h1 class="text-4xl font-bold mb-4">Welcome to Our Local Store</h1>
+            <p class="text-xl mb-8">Discover the best products at the best prices</p>
+            <a href="#products" class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">Shop Now</a>
+        </div>
+    </section>
+
+    <!-- Data Source Selection -->
+    <section class="bg-white py-8 shadow-sm">
+        <div class="container mx-auto px-4">
+            <h2 class="text-2xl font-bold text-center mb-6">Select Product Data Source</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button id="load-local" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    Load Local Products
+                </button>
+                <button id="load-fakestore" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                    Load from FakeStore API
+                </button>
+                <button id="load-dummyjson" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors">
+                    Load from DummyJSON API
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section id="products" class="container mx-auto py-12 px-4">
+        <h2 class="text-3xl font-bold text-center mb-4">Featured Products</h2>
+        <p id="data-source-info" class="text-center text-gray-600 mb-12">Select a data source above to load products</p>
+        
+        <div id="loading" class="hidden">
+            <div class="loading-spinner"></div>
+            <p class="text-center mt-4 text-gray-600">Loading products...</p>
+        </div>
+        
+        <div id="products-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Products will be loaded here dynamically -->
+        </div>
+        
+        <div class="text-center mt-12 hidden" id="view-all-container">
+            <a href="#" class="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700">View All Products</a>
+        </div>
+    </section>
+
+    <!-- Shopping Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div class="flex justify-between items-center border-b p-4">
+                <h3 class="text-xl font-semibold">Your Shopping Cart</h3>
+                <button id="close-cart" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-4 overflow-y-auto max-h-[60vh]">
+                <div id="cart-items" class="space-y-4">
+                    <p id="empty-cart-message" class="text-center text-gray-500 py-8">Your cart is empty</p>
+                </div>
+                
+                <div id="cart-totals" class="border-t pt-4 mt-4 hidden">
+                    <div class="flex justify-between mb-2">
+                        <span>Subtotal:</span>
+                        <span id="cart-subtotal">$0.00</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Tax:</span>
+                        <span id="cart-tax">$0.00</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Shipping:</span>
+                        <span id="cart-shipping">$0.00</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-lg border-t pt-2">
+                        <span>Total:</span>
+                        <span id="cart-total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t p-4 flex justify-between">
+                <button id="continue-shopping" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100">
+                    Continue Shopping
+                </button>
+                <button id="checkout" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hidden">
+                    Checkout
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Cart functionality
+        let cart = [];
+        const cartBadge = document.querySelector('.cart-badge');
+        const cartModal = document.getElementById('cart-modal');
+        const cartItems = document.getElementById('cart-items');
+        const emptyCartMessage = document.getElementById('empty-cart-message');
+        const cartTotals = document.getElementById('cart-totals');
+        const checkoutBtn = document.getElementById('checkout');
+        const cartSubtotal = document.getElementById('cart-subtotal');
+        const cartTax = document.getElementById('cart-tax');
+        const cartShipping = document.getElementById('cart-shipping');
+        const cartTotal = document.getElementById('cart-total');
+        const productsContainer = document.getElementById('products-container');
+        const loadingElement = document.getElementById('loading');
+        const dataSourceInfo = document.getElementById('data-source-info');
+        const viewAllContainer = document.getElementById('view-all-container');
+
+        // Local product data
+        const localProducts = [
+            {
+                id: 1,
+                name: "Wireless Headphones",
+                price: 99.99,
+                image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8aGVhZHBob25lfGVufDB8fDB8fHww&auto=format&fit=crop&w=500&q=60",
+                description: "High-quality wireless headphones with noise cancellation"
+            },
+            {
+                id: 2,
+                name: "Smart Watch",
+                price: 79.99,
+                image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8d2F0Y2h8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60",
+                description: "Fitness tracker with heart rate monitor and notifications"
+            },
+            {
+                id: 3,
+                name: "Running Shoes",
+                price: 89.99,
+                image: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8c2hvZXN8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&w=500&q=60",
+                description: "Comfortable running shoes with cushion technology"
+            }
+        ];
+
+        // Load products from local data
+        document.getElementById('load-local').addEventListener('click', () => {
+            loadProducts(localProducts, 'Local Product Data');
+        });
+
+        // Load products from FakeStore API
+        document.getElementById('load-fakestore').addEventListener('click', () => {
+            loadingElement.classList.remove('hidden');
+            productsContainer.innerHTML = '';
+            dataSourceInfo.textContent = 'Loading from FakeStore API...';
+            
+            fetch('https://fakestoreapi.com/products')
+                .then(response => response.json())
+                .then(products => {
+                    // Transform the API data to match our format
+                    const formattedProducts = products.map(product => ({
+                        id: product.id,
+                        name: product.title,
+                        price: product.price,
+                        image: product.image,
+                        description: product.description.length > 100 ? 
+                                    product.description.substring(0, 100) + '...' : 
+                                    product.description
+                    }));
+                    
+                    loadProducts(formattedProducts, 'FakeStore API');
+                    loadingElement.classList.add('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching from FakeStore API:', error);
+                    dataSourceInfo.textContent = 'Error loading products from FakeStore API';
+                    loadingElement.classList.add('hidden');
+                });
+        });
+
+        // Load products from DummyJSON API
+        document.getElementById('load-dummyjson').addEventListener('click', () => {
+            loadingElement.classList.remove('hidden');
+            productsContainer.innerHTML = '';
+            dataSourceInfo.textContent = 'Loading from DummyJSON API...';
+            
+            fetch('https://dummyjson.com/products')
+                .then(response => response.json())
+                .then(data => {
+                    // Transform the API data to match our format
+                    const formattedProducts = data.products.map(product => ({
+                        id: product.id,
+                        name: product.title,
+                        price: product.price,
+                        image: product.thumbnail,
+                        description: product.description.length > 100 ? 
+                                    product.description.substring(0, 100) + '...' : 
+                                    product.description
+                    }));
+                    
+                    loadProducts(formattedProducts, 'DummyJSON API');
+                    loadingElement.classList.add('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching from DummyJSON API:', error);
+                    dataSourceInfo.textContent = 'Error loading products from DummyJSON API';
+                    loadingElement.classList.add('hidden');
+                });
+        });
+
+        // Function to load products into the page
+        function loadProducts(products, source) {
+            productsContainer.innerHTML = '';
+            dataSourceInfo.textContent = `Loaded ${products.length} products from ${source}`;
+            
+            if (products.length === 0) {
+                productsContainer.innerHTML = '<p class="text-center text-gray-500 col-span-3">No products found</p>';
+                viewAllContainer.classList.add('hidden');
+                return;
+            }
+            
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'bg-white rounded-lg shadow-md overflow-hidden product-card';
+                productCard.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}" class="w-full h-56 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold mb-2">${product.name}</h3>
+                        <p class="text-gray-600 mb-4">${product.description}</p>
+                        <div class="flex justify-between items-center">
+                            <span class="text-2xl font-bold">$${product.price.toFixed(2)}</span>
+                            <button class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 add-to-cart" 
+                                    data-id="${product.id}" 
+                                    data-name="${product.name}" 
+                                    data-price="${product.price}" 
+                                    data-image="${product.image}">
+                                Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                `;
+                productsContainer.appendChild(productCard);
+            });
+            
+            // Add event listeners to the new Add to Cart buttons
+            document.querySelectorAll('.add-to-cart').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const id = e.target.getAttribute('data-id');
+                    const name = e.target.getAttribute('data-name');
+                    const price = parseFloat(e.target.getAttribute('data-price'));
+                    const image = e.target.getAttribute('data-image');
+                    
+                    addToCart(id, name, price, image);
+                });
+            });
+            
+            viewAllContainer.classList.remove('hidden');
+        }
+
+        // Add to cart function
+        function addToCart(id, name, price, image) {
+            // Check if product already in cart
+            const existingItem = cart.find(item => item.id === id);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id,
+                    name,
+                    price,
+                    image,
+                    quantity: 1
+                });
+            }
+            
+            updateCart();
+            showNotification(`${name} added to cart!`);
+        }
+
+        // Update cart UI
+        function updateCart() {
+            // Update cart badge
+            const totalItems = cart.reduce((total, item) => total + item.quantity, 0);
+            cartBadge.textContent = totalItems;
+            
+            // Show/hide empty cart message
+            if (cart.length === 0) {
+                emptyCartMessage.classList.remove('hidden');
+                cartTotals.classList.add('hidden');
+                checkoutBtn.classList.add('hidden');
+            } else {
+                emptyCartMessage.classList.add('hidden');
+                cartTotals.classList.remove('hidden');
+                checkoutBtn.classList.remove('hidden');
+                
+                // Clear cart items
+                cartItems.innerHTML = '';
+                
+                // Add items to cart
+                cart.forEach(item => {
+                    const cartItem = document.createElement('div');
+                    cartItem.className = 'flex items-center justify-between border-b pb-4 cart-item';
+                    cartItem.innerHTML = `
+                        <div class="flex items-center">
+                            <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded">
+                            <div class="ml-4">
+                                <h4 class="font-semibold">${item.name}</h4>
+                                <p class="text-gray-600">$${item.price.toFixed(2)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <button class="decrease-quantity w-8 h-8 bg-gray-200 rounded-lg" data-id="${item.id}">-</button>
+                            <span class="mx-2 w-8 text-center">${item.quantity}</span>
+                            <button class="increase-quantity w-8 h-8 bg-gray-200 rounded-lg" data-id="${item.id}">+</button>
+                            <button class="remove-item ml-4 text-red-500 hover:text-red-700" data-id="${item.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    cartItems.appendChild(cartItem);
+                });
+                
+                // Add event listeners to quantity buttons
+                document.querySelectorAll('.increase-quantity').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const id = button.getAttribute('data-id');
+                        const item = cart.find(item => item.id === id);
+                        item.quantity += 1;
+                        updateCart();
+                    });
+                });
+                
+                document.querySelectorAll('.decrease-quantity').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const id = button.getAttribute('data-id');
+                        const item = cart.find(item => item.id === id);
+                        if (item.quantity > 1) {
+                            item.quantity -= 1;
+                        } else {
+                            cart = cart.filter(item => item.id !== id);
+                        }
+                        updateCart();
+                    });
+                });
+                
+                document.querySelectorAll('.remove-item').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const id = button.getAttribute('data-id');
+                        cart = cart.filter(item => item.id !== id);
+                        updateCart();
+                    });
+                });
+                
+                // Calculate totals
+                const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+                const tax = subtotal * 0.08; // 8% tax
+                const shipping = subtotal > 0 ? 5.99 : 0; // $5.99 shipping if items in cart
+                const total = subtotal + tax + shipping;
+                
+                cartSubtotal.textContent = `$${subtotal.toFixed(2)}`;
+                cartTax.textContent = `$${tax.toFixed(2)}`;
+                cartShipping.textContent = `$${shipping.toFixed(2)}`;
+                cartTotal.textContent = `$${total.toFixed(2)}`;
+            }
+        }
+
+        // Show notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Cart modal functionality
+        document.querySelector('.fa-shopping-cart').addEventListener('click', (e) => {
+            e.preventDefault();
+            cartModal.classList.remove('hidden');
+        });
+
+        document.getElementById('close-cart').addEventListener('click', () => {
+            cartModal.classList.add('hidden');
+        });
+
+        document.getElementById('continue-shopping').addEventListener('click', () => {
+            cartModal.classList.add('hidden');
+        });
+
+        checkoutBtn.addEventListener('click', () => {
+            alert('Thank you for your order! This would proceed to checkout in a real application.');
+            cart = [];
+            updateCart();
+            cartModal.classList.add('hidden');
+        });
+
+        // Close modal when clicking outside
+        cartModal.addEventListener('click', (e) => {
+            if (e.target === cartModal) {
+                cartModal.classList.add('hidden');
+            }
+        });
+
+        // Load local products by default on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProducts(localProducts, 'Local Product Data');
+        });
+    </script>
+</body>
+</html>
