@@ -38,17 +38,6 @@
 * Express
 * MongoDB (Mongoose)
 
-**Authentication & Utilities**
-
-* JWT
-* bcryptjs
-* multer
-* dotenv
-* helmet
-* cors
-
----
-
 ## 📂 Project Structure (Simplified)
 
 ```text
@@ -68,7 +57,6 @@ Create a `.env` file in the server directory:
 
 ```env
 MONGODB_URI=mongodb://localhost:27017/localstore
-JWT_SECRET=your_jwt_secret
 PORT=5000
 NODE_ENV=development
 ```
